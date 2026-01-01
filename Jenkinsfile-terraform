@@ -97,7 +97,7 @@ pipeline {
                       # Commit only if file changed
                       git diff --cached --quiet || git commit -m "Update Ansible inventory from Jenkins"
         
-                      git push https://$GIT_USER:$GIT_TOKEN@github.com/Light-zzz/DevOps_2_tier_Project-1.git main
+                      git push https://$GIT_USER:$GIT_TOKEN@github.com/Light-zzz/DevOps_2_tier_Project-1.git HEAD:main
                     '''
                 }
             }
