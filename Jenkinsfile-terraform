@@ -80,6 +80,28 @@ pipeline {
                 }
             }
         }
+        stage('Commit Inventory to Git') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'GitHub-cred',
+                    usernameVariable: 'GIT_USER',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh '''
+                      git config user.name "jenkins"
+                      git config user.email "jenkins@ci.local"
+        
+                      git status
+                      git add Ansible/inventory.ini
+        
+                      # Commit only if file changed
+                      git diff --cached --quiet || git commit -m "Update Ansible inventory from Jenkins"
+        
+                      git push https://$GIT_USER:$GIT_TOKEN@github.com/Light-zzz/DevOps_2_tier_Project-1.git main
+                    '''
+                }
+            }
+        }
     }
 
     post {
