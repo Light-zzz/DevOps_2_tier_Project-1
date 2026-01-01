@@ -68,8 +68,8 @@ pipeline {
         
                       echo "AppVM IP: $AppVM_IP"
                       echo "MonitorVM IP: $MonitorVM_IP"
-        
-                      cat <<EOF > ../Ansible/inventory.ini
+                      cd ..
+                      cat <<EOF > ansible/inventory.ini
                         [App]
                         $AppVM_IP ansible_user=ubuntu
                         
