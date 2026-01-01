@@ -36,14 +36,16 @@ pipeline {
                 sh '''
                 set -e
 
+                if ! command -v unzip >/dev/null 2>&1; then
+                  sudo apt-get update -y
+                  sudo apt-get install -y unzip
+                fi
                 if ! command -v terraform >/dev/null 2>&1; then
                   curl -O https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip
                   unzip terraform_${TERRAFORM_VERSION}_linux_amd64.zip
-                  mv terraform $HOME/terraform
-                  export PATH=$HOME:$PATH
+                  sudo mv terraform /usr/local/bin/
                 fi
-
-                terraform version
+                terraform -version
                 '''
             }
         }
