@@ -3,7 +3,8 @@ pipeline {
 
     environment {
         TF_VERSION = "1.6.6"
-        TF_PLUGIN_TIMEOUT   = "120s"
+        TF_DIR     = "terraform"
+        ANSIBLE_DIR = "ansible"
     }
 
     stages {
@@ -11,36 +12,39 @@ pipeline {
         stage('Checkout Code') {
             steps {
                 git branch: 'main',
-                  url: 'https://github.com/Light-zzz/DevOps_2_tier_Project-1.git'
+                    url: 'https://github.com/Light-zzz/DevOps_2_tier_Project-1.git'
             }
         }
+
         stage('Install Terraform') {
             steps {
                 sh '''
-                if ! terraform version >/dev/null 2>&1; then
+                if ! command -v terraform >/dev/null 2>&1; then
                   echo "Installing Terraform ${TF_VERSION}"
                   sudo apt-get update -y
                   sudo apt-get install -y wget unzip
                   wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
                   unzip terraform_${TF_VERSION}_linux_amd64.zip
                   sudo mv terraform /usr/local/bin/
+                  terraform version
+                else
+                  terraform version
                 fi
-                terraform --version
                 '''
             }
         }
 
         stage('Terraform Init') {
             steps {
-                dir('terraform') {
-                    sh 'terraform init -reconfigure'
+                dir("${TF_DIR}") {
+                    sh 'terraform init -input=false'
                 }
             }
         }
 
         stage('Terraform Validate') {
             steps {
-                dir('terraform') {
+                dir("${TF_DIR}") {
                     sh 'terraform validate'
                 }
             }
@@ -48,25 +52,36 @@ pipeline {
 
         stage('Terraform Plan') {
             steps {
-                dir('terraform') {
-                    sh 'terraform plan'
+                dir("${TF_DIR}") {
+                    sh 'terraform plan -out=tfplan'
                 }
             }
         }
 
         stage('Terraform Apply') {
             steps {
-                dir('terraform') {
-                    sh 'terraform apply -auto-approve'
+                dir("${TF_DIR}") {
+                    sh 'terraform apply -auto-approve tfplan'
                 }
             }
         }
 
-        stage('Save Outputs') {
+        stage('Save Terraform Outputs to Ansible') {
             steps {
-                dir('terraform') {
+                dir("${TF_DIR}") {
                     sh '''
-                    terraform output -json > ../ansible/terraform_output.json
+                    mkdir -p ../${ANSIBLE_DIR}
+
+                    APP_IP=$(terraform output -raw app_vm_public_ip)
+                    MONITOR_IP=$(terraform output -raw monitor_vm_public_ip)
+
+                    cat <<EOF > ../${ANSIBLE_DIR}/inventory.ini
+[app]
+$APP_IP ansible_user=ubuntu
+
+[monitor]
+$MONITOR_IP ansible_user=ubuntu
+EOF
                     '''
                 }
             }
@@ -75,10 +90,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Infrastructure created successfully"
+            echo "✅ Terraform Infra Created & Ansible inventory generated"
         }
         failure {
-            echo "❌ Terraform failed"
+            echo "❌ Terraform pipeline failed"
         }
     }
 }
