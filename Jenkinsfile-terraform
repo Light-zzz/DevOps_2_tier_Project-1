@@ -88,11 +88,11 @@ pipeline {
                     passwordVariable: 'GIT_TOKEN'
                 )]) {
                     sh '''
-                      git config user.name "jenkins"
-                      git config user.email "jenkins@ci.local"
+                      git config user.name "Light-zzz"
+                      git config user.email "dipeshvishwa767@gmail.com"
         
                       git status
-                      git add Ansible/inventory.ini
+                      git add ansible/inventory.ini
         
                       # Commit only if file changed
                       git diff --cached --quiet || git commit -m "Update Ansible inventory from Jenkins"
