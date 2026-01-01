@@ -21,11 +21,18 @@ pipeline {
                 sh '''
                 if ! command -v terraform >/dev/null 2>&1; then
                     echo "Installing Terraform ${TF_VERSION}"
+        
                     sudo apt-get update -y
                     sudo apt-get install -y wget unzip
+        
+                    # Clean any previous broken installs
+                    sudo rm -rf terraform /usr/local/bin/terraform
+                    rm -f terraform_${TF_VERSION}_linux_amd64.zip*
+        
                     wget https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip
                     unzip -o terraform_${TF_VERSION}_linux_amd64.zip
                     sudo mv terraform /usr/local/bin/
+                    sudo chmod +x /usr/local/bin/terraform
                 else
                     echo "Terraform already installed"
                 fi
