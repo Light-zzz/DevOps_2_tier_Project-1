@@ -61,7 +61,7 @@ pipeline {
         stage('Terraform Init') {
             steps {
                 dir("${TF_DIR}") {
-                    sh 'terraform init -input=false'
+                    sh 'terraform init -input=false -upgrade'
                 }
             }
         }
