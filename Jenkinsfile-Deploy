@@ -16,11 +16,8 @@ pipeline {
         stage('Verify Ansible Setup') {
             steps {
                 sh '''
-                  echo "Workspace:"
                   pwd
-                  echo "Ansible directory:"
                   ls -l ansible
-                  echo "Inventory:"
                   cat ansible/inventory.ini
                 '''
             }
@@ -33,20 +30,21 @@ pipeline {
                     keyFileVariable: 'SSH_KEY'
                 )]) {
                     sh '''
-                      chmod 600 $SSH_KEY
+                      chmod 600 "$SSH_KEY"
+
                       cd ansible
 
                       ansible --version
                       ansible-inventory -i inventory.ini --list
 
-                      echo "Running app.yml..."
-                      ansible-playbook -i inventory.ini \
-                        --private-key $SSH_KEY \
+                      ansible-playbook \
+                        -i inventory.ini \
+                        --private-key "$SSH_KEY" \
                         app.yml
 
-                      echo "Running monitor.yml..."
-                      ansible-playbook -i inventory.ini \
-                        --private-key $SSH_KEY \
+                      ansible-playbook \
+                        -i inventory.ini \
+                        --private-key "$SSH_KEY" \
                         monitor.yml
                     '''
                 }
@@ -63,4 +61,3 @@ pipeline {
         }
     }
 }
-
