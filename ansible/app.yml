@@ -1,6 +1,6 @@
 ---
 - name: Configure Application VM
-  hosts: app
+  hosts: App
   become: yes
 
   vars:
