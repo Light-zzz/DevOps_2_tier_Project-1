@@ -59,6 +59,27 @@ pipeline {
                 }
             }
         }
+        stage('Generate Ansible Inventory') {
+            steps {
+                dir('Terraform') {
+                    sh '''
+                      AppVM_IP=$(terraform output -raw AppVM_public_ip)
+                      MonitorVM_IP=$(terraform output -raw MonitorVM_public_ip)
+        
+                      echo "AppVM IP: $AppVM_IP"
+                      echo "MonitorVM IP: $MonitorVM_IP"
+        
+                      cat <<EOF > ../Ansible/inventory.ini
+                        [App]
+                        $AppVM_IP ansible_user=ubuntu
+                        
+                        [Monitor]
+                        $MonitorVM_IP ansible_user=ubuntu
+                        EOF
+                    '''
+                }
+            }
+        }
     }
 
     post {
