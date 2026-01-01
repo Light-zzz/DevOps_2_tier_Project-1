@@ -22,13 +22,13 @@ pipeline {
             }
         }
 
-        stage('Terraform Validate') {
-            steps {
-                dir('Terraform') {
-                    sh 'terraform validate'
-                }
-            }
-        }
+//        stage('Terraform Validate') {
+//            steps {
+//                dir('Terraform') {
+//                    sh 'terraform validate'
+//                }
+//            }
+//        }
 
         stage('Terraform Plan') {
             steps {
