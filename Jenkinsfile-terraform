@@ -70,11 +70,11 @@ pipeline {
                       echo "MonitorVM IP: $MonitorVM_IP"
                       cd ..
                       cat <<EOF > ansible/inventory.ini
-                        [App]
-                        $AppVM_IP ansible_user=ubuntu
-                        
-                        [Monitor]
-                        $MonitorVM_IP ansible_user=ubuntu
+[App]
+$AppVM_IP ansible_user=ubuntu
+
+[Monitor]
+$MonitorVM_IP ansible_user=ubuntu
                         EOF
                     '''
                 }
