@@ -102,6 +102,11 @@ EOF
                 }
             }
         }
+        stage('Trigger Deployment Pipeline') {
+            steps {
+                build job: 'Deploy python app', wait: false
+            }
+        }
     }
 
     post {
