@@ -12,6 +12,16 @@ pipeline {
                 checkout scm
             }
         }
+        stage('Install Ansible') {
+            steps {
+                sh '''
+                  if ! command -v ansible >/dev/null 2>&1; then
+                    sudo apt update
+                    sudo apt install -y ansible
+                  fi
+                '''
+            }
+        }
 
         stage('Verify Ansible Setup') {
             steps {
