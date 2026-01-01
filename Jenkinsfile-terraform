@@ -1,17 +1,13 @@
 pipeline {
     agent any
 
-    environment {
-        AWS_ACCESS_KEY_ID     = credentials('aws-creds')
-        AWS_SECRET_ACCESS_KEY = credentials('aws-creds')
-        TF_IN_AUTOMATION = "true"
-    }
+    environment {}
 
     stages {
 
         stage('Checkout Code') {
             steps {
-                git 'https://github.com/Light-zzz/JenkinsforTerraformIAC.git'
+                git 'https://github.com/Light-zzz/DevOps_2_tier_Project-1.git'
             }
         }
 
