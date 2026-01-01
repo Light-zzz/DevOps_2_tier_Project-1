@@ -75,7 +75,7 @@ $AppVM_IP ansible_user=ubuntu
 
 [Monitor]
 $MonitorVM_IP ansible_user=ubuntu
-                        EOF
+EOF
                     '''
                 }
             }
