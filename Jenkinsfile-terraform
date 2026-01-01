@@ -63,8 +63,8 @@ pipeline {
             steps {
                 dir('Terraform') {
                     sh '''
-                      AppVM_IP=$(terraform output -raw AppVM_public_ip)
-                      MonitorVM_IP=$(terraform output -raw MonitorVM_public_ip)
+                      AppVM_IP=$(terraform output -raw AppVM)
+                      MonitorVM_IP=$(terraform output -raw MonitorVM)
         
                       echo "AppVM IP: $AppVM_IP"
                       echo "MonitorVM IP: $MonitorVM_IP"
