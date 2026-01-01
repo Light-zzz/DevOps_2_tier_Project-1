@@ -1,6 +1,6 @@
 ---
 - name: Configure Monitoring VM
-  hosts: monitoring
+  hosts: Monitor
   become: yes
 
   tasks:
