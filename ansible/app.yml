@@ -1,60 +1,71 @@
----
-- name: Configure Application VM
-  hosts: App
+- hosts: app
   become: yes
-
-  vars:
-    app_dir: /opt/flask-app
-
   tasks:
 
-  - name: Update apt cache
-    apt:
-      update_cache: yes
+    - name: Update system
+      apt:
+        update_cache: yes
 
-  - name: Install required packages
-    apt:
-      name:
-        - docker.io
-        - docker-compose
-        - python3-pip
-      state: present
+    - name: Install Docker
+      apt:
+        name: docker.io
+        state: present
 
-  - name: Start & enable Docker
-    service:
-      name: docker
-      state: started
-      enabled: yes
+    - name: Start Docker
+      service:
+        name: docker
+        state: started
+        enabled: yes
 
-  - name: Add ubuntu user to docker group
-    user:
-      name: ubuntu
-      groups: docker
-      append: yes
+    - name: Install Docker Compose
+      get_url:
+        url: https://github.com/docker/compose/releases/download/v2.25.0/docker-compose-linux-x86_64
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
 
-  - name: Create application directory
-    file:
-      path: "{{ app_dir }}"
-      state: directory
-      owner: ubuntu
-      group: ubuntu
+    - name: Create app directory
+      file:
+        path: /opt/flask-app
+        state: directory
 
-  - name: Copy Docker Compose file
-    copy:
-      src: ../docker/docker-compose.yml
-      dest: "{{ app_dir }}/docker-compose.yml"
-      owner: ubuntu
-      group: ubuntu
+    - name: Create docker-compose file
+      copy:
+        dest: /opt/flask-app/docker-compose.yml
+        content: |
+          version: "3"
+          services:
+            flask:
+              image: python:3.10
+              ports:
+                - "5000:5000"
+              volumes:
+                - .:/app
+              working_dir: /app
+              command: sh -c "pip install flask mysql-connector-python && python app.py"
 
-  - name: Copy Flask app
-    copy:
-      src: ../docker/app
-      dest: "{{ app_dir }}"
-      owner: ubuntu
-      group: ubuntu
+            mysql:
+              image: mysql:8
+              environment:
+                MYSQL_ROOT_PASSWORD: root
+                MYSQL_DATABASE: login_db
+              ports:
+                - "3306:3306"
 
-  - name: Build & start Flask + MySQL containers
-    shell: |
-      docker-compose up -d
-    args:
-      chdir: "{{ app_dir }}"
+    - name: Create Flask app
+      copy:
+        dest: /opt/flask-app/app.py
+        content: |
+          from flask import Flask
+          app = Flask(__name__)
+
+          @app.route("/")
+          def home():
+              return "Flask App Running"
+
+          if __name__ == "__main__":
+              app.run(host="0.0.0.0")
+
+    - name: Start Flask and MySQL
+      command: docker-compose up -d
+      args:
+        chdir: /opt/flask-app
