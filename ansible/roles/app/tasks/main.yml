@@ -1,0 +1,20 @@
+- name: Create app directory
+  file:
+    path: /opt/flask-app
+    state: directory
+
+- name: Copy app files
+  copy:
+    src: "{{ item }}"
+    dest: /opt/flask-app/
+  loop:
+    - app.py
+    - docker-compose.yml
+    - Dockerfile
+    - requirements.txt
+    - templates/login.html
+
+- name: Start application
+  shell: docker-compose up -d
+  args:
+    chdir: /opt/flask-app
