@@ -23,28 +23,18 @@ pipeline {
     }
 
     stage('Docker Compose') {
-      steps {
-        withCredentials([sshUserPrivateKey(
-          credentialsId: 'ansible-ssh',
-          keyFileVariable: 'SSH_KEY'
-        )]) {
-          sh """
-          chmod 600 \$SSH_KEY
-
-          ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ubuntu@51.20.115.211 << 'EOF'
-          cd /home/ubuntu/app/app
-
-          if [ "${ACTION}" = "up" ]; then
-            docker-compose down || true
-            docker-compose build
-            docker-compose up -d
-          else
-            docker-compose down
-          fi
-          EOF
-          """
+        steps {
+            withCredentials([sshUserPrivateKey(
+                credentialsId: 'ansible-ssh',
+                keyFileVariable: 'SSH_KEY'
+            )]) {
+                sh """
+                chmod 600 \$SSH_KEY
+                ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ubuntu@51.20.115.211 \
+                  "cd /home/ubuntu/app/app && docker-compose down || true && docker-compose build && docker-compose up -d"
+                """
+            }
         }
-      }
     }
   }
 
