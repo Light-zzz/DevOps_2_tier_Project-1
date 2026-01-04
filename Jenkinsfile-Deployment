@@ -2,28 +2,14 @@ pipeline {
   agent any
 
   parameters {
-    choice(
-      name: 'ACTION',
-      choices: ['build', 'run', 'compose-up', 'compose-down'],
-      description: 'Docker Deployment Action "UP or DOWN"'
-    )
+    choice(name: 'ACTION', choices: ['up', 'down'], description: 'Deploy or Destroy App means, "UP or DOWN"')
   }
 
   environment {
-    APP_USER = "ubuntu"
-    APP_HOST = "51.20.115.211"
-    APP_DIR  = "/home/ubuntu/app"
-    IMAGE    = "flask-app"
-    CONTAINER = "flask-app-container"
+    APP_VM = '51.20.115.211'
   }
 
   stages {
-
-    stage('Checkout Repository') {
-      steps {
-        checkout scm
-      }
-    }
 
     stage('Copy App Files to App VM') {
       steps {
@@ -31,79 +17,32 @@ pipeline {
           credentialsId: 'ansible-ssh',
           keyFileVariable: 'SSH_KEY'
         )]) {
-          sh """
-          chmod 600 \$SSH_KEY
-          ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ${APP_USER}@${APP_HOST} 'mkdir -p ${APP_DIR}'
-          rsync -avz --delete -e "ssh -i \$SSH_KEY -o StrictHostKeyChecking=no" ./ ${APP_USER}@${APP_HOST}:${APP_DIR}/
-          """
+          sh '''
+          chmod 600 $SSH_KEY
+          ssh -o StrictHostKeyChecking=no -i $SSH_KEY ubuntu@$APP_VM "mkdir -p /home/ubuntu/app"
+          rsync -avz --delete -e "ssh -i $SSH_KEY -o StrictHostKeyChecking=no" ./ ubuntu@$APP_VM:/home/ubuntu/app/
+          '''
         }
       }
     }
 
-    stage('Docker Build') {
-      when { expression { params.ACTION == 'build' } }
+    stage('Docker Compose') {
       steps {
         withCredentials([sshUserPrivateKey(
           credentialsId: 'ansible-ssh',
           keyFileVariable: 'SSH_KEY'
         )]) {
-          sh """
-          ssh -i \$SSH_KEY ${APP_USER}@${APP_HOST} <<EOF
-          cd ${APP_DIR}
-          docker build -t ${IMAGE}:latest .
+          sh '''
+          ssh -i $SSH_KEY ubuntu@$APP_VM << 'EOF'
+          cd /home/ubuntu/app/app
+          if [ "${ACTION}" = "up" ]; then
+            docker compose down || true
+            docker compose up -d --build
+          else
+            docker compose down
+          fi
           EOF
-          """
-        }
-      }
-    }
-
-    stage('Docker Run') {
-      when { expression { params.ACTION == 'run' } }
-      steps {
-        withCredentials([sshUserPrivateKey(
-          credentialsId: 'ansible-ssh',
-          keyFileVariable: 'SSH_KEY'
-        )]) {
-          sh """
-          ssh -i \$SSH_KEY ${APP_USER}@${APP_HOST} <<EOF
-          docker rm -f ${CONTAINER} || true
-          docker run -d --name ${CONTAINER} -p 5000:5000 ${IMAGE}:latest
-          EOF
-          """
-        }
-      }
-    }
-
-    stage('Docker Compose Up') {
-      when { expression { params.ACTION == 'compose-up' } }
-      steps {
-        withCredentials([sshUserPrivateKey(
-          credentialsId: 'ansible-ssh',
-          keyFileVariable: 'SSH_KEY'
-        )]) {
-          sh """
-          ssh -i \$SSH_KEY ${APP_USER}@${APP_HOST} <<EOF
-          cd ${APP_DIR}
-          docker-compose up -d --build
-          EOF
-          """
-        }
-      }
-    }
-
-    stage('Docker Compose Down') {
-      when { expression { params.ACTION == 'compose-down' } }
-      steps {
-        withCredentials([sshUserPrivateKey(
-          credentialsId: 'ansible-ssh',
-          keyFileVariable: 'SSH_KEY'
-        )]) {
-          sh """
-          ssh -i \$SSH_KEY ${APP_USER}@${APP_HOST} <<EOF
-          cd ${APP_DIR}
-          docker-compose down
-          EOF
-          """
+          '''
         }
       }
     }
@@ -111,7 +50,7 @@ pipeline {
 
   post {
     success {
-      echo "✅ Deployment '${ACTION}' completed successfully"
+      echo "✅ Deployment of Flask and MySql successful"
     }
     failure {
       echo "❌ Deployment failed"
