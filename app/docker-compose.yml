@@ -1,42 +1,30 @@
-
 version: "3.9"
+
 services:
   web:
+    build: .
     container_name: flask_app
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: flask-registration-app:latest
     ports:
       - "5000:5000"
+    depends_on:
+      - db
     environment:
       MYSQL_HOST: db
       MYSQL_USER: root
       MYSQL_PASSWORD: root
-      MYSQL_DB: registration
-    depends_on:
-      - db
-    restart: always
-    networks:
-      - app-network
+      MYSQL_DATABASE: registration_db
 
   db:
+    image: mysql:8.0
     container_name: mysql_db
-    image: mysql:5.7
+    restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: registration
+      MYSQL_DATABASE: registration_db
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
       - "3306:3306"
-    restart: always
-    networks:
-      - app-network
 
 volumes:
   mysql_data:
-
-networks:
-  app-network:
-    driver: bridge
