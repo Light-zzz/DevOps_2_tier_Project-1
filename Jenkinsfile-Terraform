@@ -43,7 +43,7 @@ pipeline {
 //        }
         stage('Terraform Apply/Destroy') {
           steps {
-            dir('terraform') {
+            dir('Terraform') {
               sh """
                 if [ "${ACTION}" == "apply" ]; then
                   terraform apply -auto-approve
