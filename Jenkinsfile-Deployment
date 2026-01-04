@@ -11,8 +11,8 @@ pipeline {
 
   environment {
     APP_USER = "ubuntu"
-    APP_HOST = "51.20.115.211"     // you can later auto-load from inventory
-    APP_DIR  = "/home/ubuntu/docker"
+    APP_HOST = "51.20.115.211"
+    APP_DIR  = "/home/ubuntu/app"
     IMAGE    = "flask-app"
     CONTAINER = "flask-app-container"
   }
@@ -25,7 +25,7 @@ pipeline {
       }
     }
 
-    stage('Copy Docker Files to App VM') {
+    stage('Copy App Files to App VM') {
       steps {
         withCredentials([sshUserPrivateKey(
           credentialsId: 'ansible-ssh',
@@ -34,7 +34,7 @@ pipeline {
           sh """
           chmod 600 \$SSH_KEY
           ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ${APP_USER}@${APP_HOST} 'mkdir -p ${APP_DIR}'
-          rsync -avz --delete -e "ssh -i \$SSH_KEY -o StrictHostKeyChecking=no" docker/ ${APP_USER}@${APP_HOST}:${APP_DIR}/
+          rsync -avz --delete -e "ssh -i \$SSH_KEY -o StrictHostKeyChecking=no" ./ ${APP_USER}@${APP_HOST}:${APP_DIR}/
           """
         }
       }
@@ -57,7 +57,7 @@ pipeline {
       }
     }
 
-    stage('Docker Run (Recreate Container)') {
+    stage('Docker Run') {
       when { expression { params.ACTION == 'run' } }
       steps {
         withCredentials([sshUserPrivateKey(
@@ -111,7 +111,7 @@ pipeline {
 
   post {
     success {
-      echo "✅ ACTION '${ACTION}' executed successfully on App VM"
+      echo "✅ Deployment '${ACTION}' completed successfully"
     }
     failure {
       echo "❌ Deployment failed"
