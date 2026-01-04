@@ -36,10 +36,10 @@ pipeline {
           ssh -i $SSH_KEY ubuntu@$APP_VM << 'EOF'
           cd /home/ubuntu/app/app
           if [ "${ACTION}" = "up" ]; then
-            docker compose down || true
-            docker compose up -d --build
+            docker-compose down || true
+            docker-compose up -d --build
           else
-            docker compose down
+            docker-compose down
           fi
           EOF
           '''
