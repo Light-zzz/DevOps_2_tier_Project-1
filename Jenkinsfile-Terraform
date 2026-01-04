@@ -1,16 +1,22 @@
 pipeline {
     agent any
 
-  parameters {
-    choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform Action')
-  }
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['apply', 'destroy'],
+            description: 'Terraform Action'
+        )
+    }
 
     stages {
+
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
+
         stage('Terraform Init') {
             steps {
                 dir('Terraform') {
@@ -18,13 +24,7 @@ pipeline {
                 }
             }
         }
-//        stage('Terraform Validate') {
-//            steps {
-//                dir('Terraform') {
-//                    sh 'terraform validate'
-//                }
-//            }
-//        }
+
         stage('Terraform Plan') {
             steps {
                 dir('Terraform') {
@@ -36,44 +36,47 @@ pipeline {
                 }
             }
         }
-//        stage('Approve Apply') {
-//            steps {
-//                input message: 'Apply Terraform changes?', ok: 'Apply'
-//            }
-//        }
-        stage('Terraform Apply/Destroy') {
-          steps {
-            dir('Terraform') {
-              sh """
-                if [ "${ACTION}" == "apply" ]; then
-                  terraform apply -auto-approve
-                else
-                  terraform destroy -auto-approve
-                fi
-              """
+
+        stage('Terraform Apply or Destroy') {
+            steps {
+                dir('Terraform') {
+                    sh '''
+                        if [ "${ACTION}" = "apply" ]; then
+                            terraform apply -auto-approve tfplan
+                        else
+                            terraform destroy -auto-approve
+                        fi
+                    '''
+                }
             }
-          }
         }
+
         stage('Generate Ansible Inventory') {
-          when {
-            expression { params.ACTION == 'apply' }
-          }
-          steps {
-            sh """
-            APP_IP=$(terraform -chdir=terraform output -raw app_ip)
-            MON_IP=$(terraform -chdir=terraform output -raw monitor_ip)
-    
-            cat <<EOF > ansible/inventory.ini
+            when {
+                expression { params.ACTION == 'apply' }
+            }
+            steps {
+                sh '''
+                    APP_IP=$(terraform -chdir=Terraform output -raw app_ip)
+                    MON_IP=$(terraform -chdir=Terraform output -raw monitor_ip)
+
+                    mkdir -p ansible
+
+                    cat <<EOF > ansible/inventory.ini
 [app]
 $APP_IP ansible_user=ubuntu
 
 [monitor]
 $MON_IP ansible_user=ubuntu
 EOF
-"""
-          }
+                '''
+            }
         }
+
         stage('Commit Inventory to Git') {
+            when {
+                expression { params.ACTION == 'apply' }
+            }
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'GitHub-cred',
@@ -81,25 +84,18 @@ EOF
                     passwordVariable: 'GIT_TOKEN'
                 )]) {
                     sh '''
-                      git config user.name "Light-zzz"
-                      git config user.email "dipeshvishwa767@gmail.com"
-        
-                      git status
-                      git add ansible/inventory.ini
-        
-                      # Commit only if file changed
-                      git diff --cached --quiet || git commit -m "Update Ansible inventory from Jenkins"
-        
-                      git push https://$GIT_USER:$GIT_TOKEN@github.com/Light-zzz/DevOps_2_tier_Project-1.git HEAD:main
+                        git config user.name "Light-zzz"
+                        git config user.email "dipeshvishwa767@gmail.com"
+
+                        git add ansible/inventory.ini
+
+                        git diff --cached --quiet || git commit -m "Update Ansible inventory from Jenkins"
+
+                        git push https://$GIT_USER:$GIT_TOKEN@github.com/Light-zzz/DevOps_2_tier_Project-1.git HEAD:main
                     '''
                 }
             }
         }
-//        stage('Trigger Deployment Pipeline') {
-//            steps {
-//                build job: 'Setup-Packages-ansible', wait: false
-//            }
-//        }
     }
 
     post {
