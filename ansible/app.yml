@@ -1,17 +1,24 @@
-- hosts: app
+---
+- name: Configure App Server
+  hosts: app
   become: yes
+
   vars:
     cw_agent_url: https://s3.amazonaws.com/amazoncloudwatch-agent/ubuntu/amd64/latest/amazon-cloudwatch-agent.deb
     cw_config_path: /opt/aws/amazon-cloudwatch-agent/etc/amazon-cloudwatch-agent.json
+    node_exporter_version: "1.6.1"
 
   tasks:
+    # =============================
+    # System Update
+    # =============================
     - name: Update apt cache
       apt:
         update_cache: yes
 
-    # -----------------------------
-    # Docker
-    # -----------------------------
+    # =============================
+    # Docker Installation
+    # =============================
     - name: Install Docker
       apt:
         name: docker.io
@@ -23,23 +30,29 @@
         state: started
         enabled: yes
 
-    # -----------------------------
-    # Docker Compose
-    # -----------------------------
+    - name: Add ubuntu user to docker group
+      user:
+        name: ubuntu
+        groups: docker
+        append: yes
+
+    # =============================
+    # Docker Compose (Binary Method)
+    # =============================
     - name: Install Docker Compose
       get_url:
         url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
         dest: /usr/local/bin/docker-compose
         mode: '0755'
-    - name: Install Docker Compose v2 plugin
-      apt:
-        name: docker-compose-plugin
-        state: present
-        update_cache: yes
 
-    # -----------------------------
+    - name: Verify Docker Compose installation
+      command: docker-compose --version
+      register: compose_version
+      changed_when: false
+
+    # =============================
     # Node Exporter
-    # -----------------------------
+    # =============================
     - name: Create node_exporter user
       user:
         name: node_exporter
@@ -49,7 +62,7 @@
 
     - name: Download Node Exporter
       get_url:
-        url: https://github.com/prometheus/node_exporter/releases/download/v1.6.1/node_exporter-1.6.1.linux-amd64.tar.gz
+        url: "https://github.com/prometheus/node_exporter/releases/download/v{{ node_exporter_version }}/node_exporter-{{ node_exporter_version }}.linux-amd64.tar.gz"
         dest: /tmp/node_exporter.tar.gz
 
     - name: Extract Node Exporter
@@ -60,16 +73,41 @@
 
     - name: Install Node Exporter binary
       copy:
-        src: /tmp/node_exporter-1.6.1.linux-amd64/node_exporter
+        src: "/tmp/node_exporter-{{ node_exporter_version }}.linux-amd64/node_exporter"
         dest: /usr/local/bin/node_exporter
         owner: node_exporter
         group: node_exporter
         mode: '0755'
         remote_src: yes
 
-    # -----------------------------
+    - name: Create Node Exporter systemd service
+      copy:
+        dest: /etc/systemd/system/node_exporter.service
+        content: |
+          [Unit]
+          Description=Node Exporter
+          Wants=network-online.target
+          After=network-online.target
+
+          [Service]
+          User=node_exporter
+          Group=node_exporter
+          Type=simple
+          ExecStart=/usr/local/bin/node_exporter
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start Node Exporter
+      systemd:
+        name: node_exporter
+        enabled: yes
+        state: started
+        daemon_reload: yes
+
+    # =============================
     # CloudWatch Agent
-    # -----------------------------
+    # =============================
     - name: Download CloudWatch Agent
       get_url:
         url: "{{ cw_agent_url }}"
@@ -116,9 +154,7 @@
                   "measurement": [
                     "used_percent"
                   ],
-                  "resources": [
-                    "*"
-                  ]
+                  "resources": ["*"]
                 }
               }
             }
