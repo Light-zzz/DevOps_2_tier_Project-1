@@ -1,19 +1,16 @@
 pipeline {
     agent any
 
-    environment {
-        TF_IN_AUTOMATION = "true"
-        AWS_DEFAULT_REGION = "eu-north-1"   // change if needed
-    }
+  parameters {
+    choice(name: 'ACTION', choices: ['apply', 'destroy'], description: 'Terraform Action')
+  }
 
     stages {
-
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
-
         stage('Terraform Init') {
             steps {
                 dir('Terraform') {
@@ -21,7 +18,6 @@ pipeline {
                 }
             }
         }
-
 //        stage('Terraform Validate') {
 //            steps {
 //                dir('Terraform') {
@@ -29,7 +25,6 @@ pipeline {
 //                }
 //            }
 //        }
-
         stage('Terraform Plan') {
             steps {
                 dir('Terraform') {
@@ -41,44 +36,42 @@ pipeline {
                 }
             }
         }
-
-        stage('Approve Apply') {
-            steps {
-                input message: 'Apply Terraform changes?', ok: 'Apply'
+//        stage('Approve Apply') {
+//            steps {
+//                input message: 'Apply Terraform changes?', ok: 'Apply'
+//            }
+//        }
+        stage('Terraform Apply/Destroy') {
+          steps {
+            dir('terraform') {
+              sh """
+                if [ "${ACTION}" == "apply" ]; then
+                  terraform apply -auto-approve
+                else
+                  terraform destroy -auto-approve
+                fi
+              """
             }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                dir('Terraform') {
-                    sh '''
-                        terraform apply \
-                          -input=false \
-                          tfplan
-                    '''
-                }
-            }
+          }
         }
         stage('Generate Ansible Inventory') {
-            steps {
-                dir('Terraform') {
-                    sh '''
-                      AppVM_IP=$(terraform output -raw AppVM)
-                      MonitorVM_IP=$(terraform output -raw MonitorVM)
-        
-                      echo "AppVM IP: $AppVM_IP"
-                      echo "MonitorVM IP: $MonitorVM_IP"
-                      cd ..
-                      cat <<EOF > ansible/inventory.ini
-[App]
-$AppVM_IP ansible_user=ubuntu
+          when {
+            expression { params.ACTION == 'apply' }
+          }
+          steps {
+            sh """
+            APP_IP=$(terraform -chdir=terraform output -raw app_ip)
+            MON_IP=$(terraform -chdir=terraform output -raw monitor_ip)
+    
+            cat <<EOF > ansible/inventory.ini
+[app]
+$APP_IP ansible_user=ubuntu
 
-[Monitor]
-$MonitorVM_IP ansible_user=ubuntu
+[monitor]
+$MON_IP ansible_user=ubuntu
 EOF
-                    '''
-                }
-            }
+            """
+          }
         }
         stage('Commit Inventory to Git') {
             steps {
@@ -102,15 +95,16 @@ EOF
                 }
             }
         }
-        stage('Trigger Deployment Pipeline') {
-            steps {
-                build job: 'Setup-Packages-ansible', wait: false
-            }
-        }
+//        stage('Trigger Deployment Pipeline') {
+//            steps {
+//                build job: 'Setup-Packages-ansible', wait: false
+//            }
+//        }
     }
 
     post {
         success {
+            build job: 'Ansible-Pipeline', wait: false
             echo 'Terraform infrastructure created successfully'
         }
         failure {
