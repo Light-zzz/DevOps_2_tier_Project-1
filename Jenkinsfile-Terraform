@@ -70,7 +70,7 @@ $APP_IP ansible_user=ubuntu
 [monitor]
 $MON_IP ansible_user=ubuntu
 EOF
-            """
+"""
           }
         }
         stage('Commit Inventory to Git') {
