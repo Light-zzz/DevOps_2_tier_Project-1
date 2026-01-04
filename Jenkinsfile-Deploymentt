@@ -1,0 +1,40 @@
+pipeline {
+  agent any
+
+  parameters {
+    choice(name: 'ACTION', choices: ['up', 'down'], description: 'Deploy or Remove App')
+  }
+
+  stages {
+    stage('Cleanup Old Containers') {
+      steps {
+        sh '''
+        docker rm -f $(docker ps -aq) || true
+        docker rmi -f $(docker images -q) || true
+        '''
+      }
+    }
+
+    stage('Docker Compose') {
+      steps {
+        dir('docker') {
+          sh """
+          if [ "${ACTION}" == "up" ]; then
+            docker-compose up -d --build
+          else
+            docker-compose down
+          fi
+          """
+        }
+      }
+    }
+
+    stage('Store Logs') {
+      steps {
+        sh '''
+        docker logs $(docker ps -q) > docker/logs.txt || true
+        '''
+      }
+    }
+  }
+}
