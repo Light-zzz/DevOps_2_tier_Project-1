@@ -31,6 +31,11 @@
         url: https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64
         dest: /usr/local/bin/docker-compose
         mode: '0755'
+    - name: Install Docker Compose v2 plugin
+      apt:
+        name: docker-compose-plugin
+        state: present
+        update_cache: yes
 
     # -----------------------------
     # Node Exporter
