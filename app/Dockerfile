@@ -2,11 +2,16 @@ FROM python:3.10-slim
 
 WORKDIR /app
 
-# Copy dependencies first (better cache)
+# Install system dependencies for mysqlclient
+RUN apt-get update && apt-get install -y \
+    gcc \
+    pkg-config \
+    default-libmysqlclient-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
 COPY . .
 
 EXPOSE 5000
