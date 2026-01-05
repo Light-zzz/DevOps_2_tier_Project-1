@@ -26,6 +26,7 @@ def register():
         username = request.form['username']
         email = request.form['email']
         password = request.form['password']
+        #password = generate_password_hash(request.form['password'])
 
         cur = mysql.connection.cursor()
         cur.execute(
@@ -50,7 +51,8 @@ def login():
         user = cur.fetchone()
         cur.close()
 
-        if user and check_password_hash(user[3], password):
+        #if user and check_password_hash(user[3], password):
+        if user and user[3], password:
             session['username'] = username
             return redirect(url_for('home'))
 
