@@ -52,7 +52,7 @@ def login():
         cur.close()
 
         #if user and check_password_hash(user[3], password):
-        if user and user[3], password:
+        if user and user[3] == password:
             session['username'] = username
             return redirect(url_for('home'))
 
