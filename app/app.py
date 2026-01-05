@@ -1,73 +1,67 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-import mysql.connector
 import os
+from flask import Flask, render_template, request, redirect, url_for, session
+from flask_mysqldb import MySQL
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
-app.secret_key = "secret123"   # required for flash messages
+app.secret_key = "supersecretkey"
 
-# ----------------------------
-# MySQL Configuration
-# ----------------------------
-db_config = {
-    "host": os.getenv("MYSQL_HOST", "mysql"),     # service name in docker-compose
-    "user": os.getenv("MYSQL_USER", "root"),
-    "password": os.getenv("MYSQL_PASSWORD", "root"),
-    "database": os.getenv("MYSQL_DB", "registration")
-}
+# MySQL Config (from docker-compose env)
+app.config['MYSQL_HOST'] = os.environ.get('MYSQL_HOST')
+app.config['MYSQL_USER'] = os.environ.get('MYSQL_USER')
+app.config['MYSQL_PASSWORD'] = os.environ.get('MYSQL_PASSWORD')
+app.config['MYSQL_DB'] = os.environ.get('MYSQL_DATABASE')
 
-def get_db_connection():
-    return mysql.connector.connect(**db_config)
+mysql = MySQL(app)
 
-# ----------------------------
-# Routes
-# ----------------------------
-@app.route("/")
-def index():
-    return render_template("index.html")
+@app.route('/')
+def home():
+    if 'username' in session:
+        return render_template('index.html', username=session['username'])
+    return redirect(url_for('login'))
 
-@app.route("/register", methods=["POST"])
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-    name = request.form.get("name")
-    email = request.form.get("email")
-    password = request.form.get("password")
+    if request.method == 'POST':
+        username = request.form['username']
+        email = request.form['email']
+        password = generate_password_hash(request.form['password'])
 
-    if not name or not email or not password:
-        flash("All fields are required!", "error")
-        return redirect(url_for("index"))
-
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Create table if not exists
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS users (
-                id INT AUTO_INCREMENT PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                email VARCHAR(100) NOT NULL UNIQUE,
-                password VARCHAR(255) NOT NULL
-            )
-        """)
-
-        # Insert data
-        cursor.execute(
-            "INSERT INTO users (name, email, password) VALUES (%s, %s, %s)",
-            (name, email, password)
+        cur = mysql.connection.cursor()
+        cur.execute(
+            "INSERT INTO users(username, email, password) VALUES (%s, %s, %s)",
+            (username, email, password)
         )
+        mysql.connection.commit()
+        cur.close()
 
-        conn.commit()
-        cursor.close()
-        conn.close()
+        return redirect(url_for('login'))
 
-        flash("Registration successful!", "success")
+    return render_template('registration.html')
 
-    except mysql.connector.Error as err:
-        flash(f"Database error: {err}", "error")
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
 
-    return redirect(url_for("index"))
+        cur = mysql.connection.cursor()
+        cur.execute("SELECT * FROM users WHERE username=%s", (username,))
+        user = cur.fetchone()
+        cur.close()
 
-# ----------------------------
-# App Runner
-# ----------------------------
+        if user and check_password_hash(user[3], password):
+            session['username'] = username
+            return redirect(url_for('home'))
+
+        return "Invalid Credentials", 401
+
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
