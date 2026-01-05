@@ -5,7 +5,7 @@ pipeline {
     choice(name: 'ACTION', choices: ['up', 'down'], description: 'Deploy or Remove App means, "UP or DOWN"')
   }
   environment {
-        HOST_IP = 51.20.115.211
+        HOST_IP = "13.51.235.208"
   }
 
   stages {
