@@ -4,6 +4,9 @@ pipeline {
   parameters {
     choice(name: 'ACTION', choices: ['up', 'down'], description: 'Deploy or Remove App means, "UP or DOWN"')
   }
+  environment {
+        HOST_IP = 51.20.115.211
+  }
 
   stages {
 
@@ -15,8 +18,8 @@ pipeline {
         )]) {
           sh """
           chmod 600 \$SSH_KEY
-          ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ubuntu@51.20.115.211 'mkdir -p /home/ubuntu/app'
-          rsync -avz --delete -e "ssh -i \$SSH_KEY -o StrictHostKeyChecking=no" ./ ubuntu@51.20.115.211:/home/ubuntu/app/
+          ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ubuntu@$HOST_IP 'mkdir -p /home/ubuntu/app'
+          rsync -avz --delete -e "ssh -i \$SSH_KEY -o StrictHostKeyChecking=no" ./ ubuntu@$HOST_IP:/home/ubuntu/app/
           """
         }
       }
@@ -30,7 +33,7 @@ pipeline {
             )]) {
                 sh """
                 chmod 600 \$SSH_KEY
-                ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ubuntu@51.20.115.211 \
+                ssh -o StrictHostKeyChecking=no -i \$SSH_KEY ubuntu@$HOST_IP \
                   "cd /home/ubuntu/app/app && docker-compose down || true && docker-compose build && docker-compose up -d"
                 """
             }
